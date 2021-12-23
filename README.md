@@ -1,8 +1,8 @@
 # dimred
 
-Color mapping is always challenging in astrophotography, especially when we count with observations of the same astronomical object in multiple spectral bands. Here I propose a possible method to approach this problem based on a well-known machine learning algorithm borrowed from classic statistics, the Principal Component Analysis, to compress information from the multiband input data into RGB channels while minimizing information loss. This technique could also be applied to narrowband-only "SHO" data to find an encoding that deals with the typical H-alpha overwhelming signal. 
+Color mapping is always challenging in astrophotography, especially when we have observations of the same astronomical object in multiple spectral bands. Here I propose a possible method to approach this problem based on a well-known machine learning algorithm borrowed from classic statistics, the Principal Component Analysis (PCA), to compress information from the multiband input data into RGB channels while minimizing information loss. This technique could also be applied to narrowband-only "SHO" data to find an encoding that deals with the typical H-alpha overwhelming signal. 
 
-More info about this approach in the [blog page](https://). 
+More info about this approach in the [blog page](https://expandingastro.blogspot.com/2021/12/multiband-mapping-for-astrophotography.html). 
 
 
 ## Command line help
@@ -37,7 +37,7 @@ Examples:
   dimred.py *.tif output\pca.tif -cr 30 
 ```  
 
-* Exploratory mode, with 5x5 chroma rotation values in the range [30�, 120�], downscaling by 8: 
+* Exploratory mode, with 5x5 chroma rotation values in the range [30º, 120º], downscaling by 8: 
 ```
   dimred.py *.tif output\pca.tif -e 5 -df 8 -cr 30 -cr 120
 ```
@@ -58,7 +58,7 @@ optional arguments:
   -cr CHROMA_ROTATION, --chroma-rotation CHROMA_ROTATION
                         Angle (in degrees) for specifying chroma components rotation; will be interpreted as initial angle in --explore mode (optional)
   -ce CHROMA_ROTATION_END, --chroma-rotation-end CHROMA_ROTATION_END
-                        End angle (in degrees) for in --explore mode; by default, 360�+CHROMA_ROTATION (optional)
+                        End angle (in degrees) for in --explore mode; by default, 360º+CHROMA_ROTATION (optional)
   -cf, --chroma-flip
   -lf, --luma-flip
   -e EXPLORE, --explore EXPLORE
