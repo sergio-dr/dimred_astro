@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from skimage.io import imread, imsave
-from skimage.transform import downscale_local_mean
+from skimage.transform import rescale 
 from skimage.color import lab2rgb # TODO:, ydbdr2rgb, ...
 from skimage.util import img_as_uint
 
@@ -91,6 +91,8 @@ parser.add_argument("-e", "--explore", type=int, default=config_defaults['explor
 
 args = parser.parse_args(DEBUG_CMDLINE)
 config = vars(args)
+if DEBUG_CMDLINE:
+    print(config)
 
 
 
@@ -108,7 +110,9 @@ for filename in iglob(path_tpl):
     print(filename, im.dtype, im.shape)        
     im = im.astype(np.float32) / (2**16 - 1)    
     if config['downscale_factor'] > 1:
-        im = downscale_local_mean(im, (config['downscale_factor'], config['downscale_factor']))
+        im = rescale(im, 1.0/config['downscale_factor'], anti_aliasing=False)
+        # rescale with no aliasing (nearest neighbor) to sample the original image data;
+        # downscale_local_mean would change the data so PCA components may flip sign
     images.append( im )
 print()
 
@@ -193,12 +197,13 @@ if config['explore'] == 0:
     rgb = lab2rgb(lum_chr) 
     imsave(config['output_file'], img_as_uint(rgb))
 else:
-    print("Generating mosaic...")
     N = config['explore']
+    print(f"Generating {N}x{N} mosaic, ", end="")    
     M = N*N
     cols, rows = N, 2*N
     hue_i = config['chroma_rotation']
     hue_f = config['chroma_rotation_end'] if config['chroma_rotation_end'] is not None else config['chroma_rotation']+360 
+    print(f"{hue_i:.1f} to {hue_f:.1f}...")
 
     ar = w/h
     S = 4
@@ -216,7 +221,7 @@ else:
         rgb_hue = lab2rgb(lum_chr_degs)
         axs[i+M].imshow(rgb_hue)
         axs[i+M].set_axis_off()
-        axs[i+M].text(0, 16, f"-cf -cr={degs:.1f}", c='white', fontsize=16)
+        axs[i+M].text(0, 16, f"-cr={degs:.1f} -cf", c='white', fontsize=16)
     fig.tight_layout()
     fig.savefig(config['output_file'])
 
