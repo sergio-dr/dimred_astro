@@ -19,11 +19,6 @@ from sklearn.preprocessing import MinMaxScaler, RobustScaler
 np.set_printoptions(precision=4)
 
 
-n_components = 3
-luma_factor = 100
-chroma_factor = 90
-
-
 DESC="""
 Maps multiple bands or channels (given as a bunch of monochromatic image TIFF files) into a RGB color image. 
 Input data is transformed by a PCA (Principal Components Analysis) algorithm to reduce the dimensionality, 
@@ -59,10 +54,14 @@ DEBUG_CMDLINE = None
 #DEBUG_CMDLINE = "*.tif pca.tif -df 8 -e 5".split(" ") 
 
 config_defaults = {
+    'n_components': 3,
+    'luma_scale_factor': 100,
+    'chroma_scale_factor': 90,    
     'downscale_factor': 1,
     'quantile_min': 0.01,
     'quantile_max': 99.99,
     'chroma_rotation': 0.0,
+    'mask_exponent': 4.0,
     'explore': 0,
 }
 
@@ -82,19 +81,26 @@ parser.add_argument("-cr", "--chroma-rotation", type=float, default=config_defau
 parser.add_argument("-ce", "--chroma-rotation-end", type=float, 
                     help="End angle (in degrees) for in --explore mode; by default, 360º+CHROMA_ROTATION (optional)")
 parser.add_argument("-cf", "--chroma-flip", action='store_true',
-                    help="")
+                    help="Flips chrominance plane, specifically flipping the sign of the first chroma component (optional)")
 parser.add_argument("-lf", "--luma-flip", action='store_true',
-                    help="")
+                    help="Flips sign of the luminance channel")
+parser.add_argument("-cs", "--chroma-scale-factor", type=float, default=config_defaults['chroma_scale_factor'],
+                    help="Multiplicative factor to scale chroma components (optional)")
+parser.add_argument("-sm", "--star-mask", action='store_true',
+                    help="Applies mask to prevent star cores from getting out of gamut (optional)")
+parser.add_argument("-me", "--mask-exponent", type=float, default=config_defaults['mask_exponent'],
+                    help="Defines a simple mask based on luminance: mask = 1 - L^mask_exponent (optional)") 
 parser.add_argument("-e", "--explore", type=int, default=config_defaults['explore'],
                     help="Exploratory mode: given an integer N, generates a NxN mosaic with the --chroma-angle range specified (optional)")
 
 
 args = parser.parse_args(DEBUG_CMDLINE)
-config = vars(args)
+config = { **config_defaults, **vars(args) }
 if DEBUG_CMDLINE:
     print(config)
 
 
+# %%
 
 # __/ Prepare output directory \__________
 output_path = os.path.dirname(os.path.join('.', config['output_file']))
@@ -125,7 +131,8 @@ del im, images
 h, w, channels = data.shape
 data = data.reshape((-1, channels))
 
-pca = PCA(n_components=n_components)
+print("Applying PCA...")
+pca = PCA(n_components=config['n_components'])
 embedding = pca.fit_transform(data)
 del data
 
@@ -141,16 +148,17 @@ luma_scaler = MinMaxScaler()
 quantile_range = (config['quantile_min'], config['quantile_max'])
 chroma_scaler = RobustScaler(quantile_range=quantile_range) 
 
-luma = luma_factor * luma_scaler.fit_transform(embedding[:, [0]])
-chroma = chroma_factor * chroma_scaler.fit_transform(embedding[:, [1, 2]])
+luma = config['luma_scale_factor'] * luma_scaler.fit_transform(embedding[:, [0]])
+chroma = config['chroma_scale_factor'] * chroma_scaler.fit_transform(embedding[:, [1, 2]])
 
 lum_chr = np.concatenate([luma, chroma], axis=-1)
 
 print("Lab channels range:")
 lab_ch_names = "Lab"
-for ch in range(n_components):
+for ch in range(config['n_components']):
     print(f"{lab_ch_names[ch]} : {lum_chr[:, ch].min():.2f} .. {lum_chr[:, ch].max():.2f}")
 print()
+
 
 # %%
 
@@ -185,15 +193,30 @@ if config['luma_flip']:
     lum_chr = luma_flipping(lum_chr)
 
 if config['explore'] == 0:
-    print("Generating output image...")
+    print("Generating output image...\n")
     if config['chroma_flip']:
-        lum_chr = chroma_flipping(lum_chr)    
+        lum_chr = chroma_flipping(lum_chr)
+
+    # Debug CIELab output
+    #imsave(config['output_file'].replace(".tif", "_L.tif"), img_as_uint(lum_chr[:,0].reshape((h,w,1))/100.0))
+    #imsave(config['output_file'].replace(".tif", "_a.tif"), img_as_uint(lum_chr[:,1].reshape((h,w,1))/200.0 + 0.5))
+    #imsave(config['output_file'].replace(".tif", "_b.tif"), img_as_uint(lum_chr[:,2].reshape((h,w,1))/200.0 + 0.5))
+    
     lum_chr = chroma_rotation(lum_chr, config['chroma_rotation'])
 
-    for ch in range(n_components):
-        print( lum_chr[:, ch].min(), lum_chr[:, ch].max() )
+    print("Lab channels range (after rotation/flipping):")
+    lab_ch_names = "Lab"
+    for ch in range(config['n_components']):
+        print(f"{lab_ch_names[ch]} : {lum_chr[:, ch].min():.2f} .. {lum_chr[:, ch].max():.2f}")
+    print()
 
     lum_chr = lum_chr.reshape((h, w, 3))
+
+    if config['star_mask']:
+        print(f"Applying star mask (1-L^{config['mask_exponent']})...\n")
+        mask = 1.0 - np.power(lum_chr[..., [0]]/config['luma_scale_factor'], config['mask_exponent'])
+        lum_chr[..., 1:] *= mask
+
     rgb = lab2rgb(lum_chr) 
     imsave(config['output_file'], img_as_uint(rgb))
 else:
@@ -225,5 +248,5 @@ else:
     fig.tight_layout()
     fig.savefig(config['output_file'])
 
-print("done.\n")
+print("... done.\n")
 # %%
