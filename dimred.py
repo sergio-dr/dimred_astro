@@ -13,6 +13,8 @@ from skimage.transform import rescale
 from skimage.color import lab2rgb # TODO:, ydbdr2rgb, ...
 from skimage.util import img_as_uint
 
+from xisf import XISF
+
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 
@@ -37,6 +39,10 @@ In some cases, --luma-flip may be needed if an inverted image is generated.
 
 The input files are assumed to be in non-linear stage (i.e., previously stretched).
 
+Supported file formats:
+* Input files: tif, png, xisf, npz 
+* Output files: tif, png, xisf (not in exploratory mode)
+
 Examples:
 * Basic usage:
 ```
@@ -48,6 +54,7 @@ Examples:
   dimred.py *.tif output\pca.tif -e 5 -df 8 -cr 30 -cr 120
 ```
 
+Note: this tool requires the xisf package, see https://github.com/sergio-dr/xisf
 """
 
 DEBUG_CMDLINE = None
@@ -107,22 +114,53 @@ output_path = os.path.dirname(os.path.join('.', config['output_file']))
 os.makedirs(output_path, exist_ok=True)
 
 
+# __/ Select image read and write method depending on file extension \__________
+image_read = { 
+    '.tif' : lambda fname: np.atleast_3d( imread(fname).astype(np.float32) / (2**16 - 1) ),
+    '.xisf': XISF.read,
+    '.npz' : lambda fname: np.atleast_3d( np.load(fname) )
+}
+
+image_write = {
+    '.tif' : lambda fname, d: imsave(fname, img_as_uint(d)),
+    '.png' : lambda fname, d: imsave(fname, img_as_uint(d)),    
+    '.xisf': lambda fname, d: XISF.write(fname, d)
+}
+
+# Check if output file format is supported
+_, out_ext = os.path.splitext(config['output_file'])
+if not out_ext in image_write.keys(): 
+    print("Output file format not supported.\n")
+    exit(1)
+
+if config['explore'] > 0 and out_ext == '.xisf':
+    print("XISF format is not supported in explore mode.\n")
+    exit(1)
+
+
 # __/ Open input files and generate the stack \__________
 path_tpl = os.path.join('.', config['input_files'])
 images = []
 print("Input images:")
 for filename in iglob(path_tpl):
-    im = imread(filename)
-    print(filename, im.dtype, im.shape)        
-    im = im.astype(np.float32) / (2**16 - 1)    
-    if config['downscale_factor'] > 1:
-        im = rescale(im, 1.0/config['downscale_factor'], anti_aliasing=False)
+    _, ext = os.path.splitext(filename)
+    im = image_read[ext](filename)
+
+    df = config['downscale_factor']
+    if df > 1:
+        orig_shape = im.shape
+        im = im[::df, ::df, ...]
+        #im = rescale(im, 1.0/config['downscale_factor'], anti_aliasing=False, multichannel=(len(im.shape)==3)) # channel_axis=None if len(im.shape)<3 else -1) in skimage 0.19        
+        print(filename, im.dtype, orig_shape, "->", im.shape)          
+
         # rescale with no aliasing (nearest neighbor) to sample the original image data;
         # downscale_local_mean would change the data so PCA components may flip sign
+    else:
+        print(filename, im.dtype, im.shape)  
     images.append( im )
-print()
 
-data = np.stack(images, axis=-1)
+data = np.concatenate(images, axis=-1)
+print("... --> ", data.shape, "\n")
 del im, images
 
 # %%
@@ -218,7 +256,9 @@ if config['explore'] == 0:
         lum_chr[..., 1:] *= mask
 
     rgb = lab2rgb(lum_chr) 
-    imsave(config['output_file'], img_as_uint(rgb))
+    
+    image_write[out_ext](config['output_file'], rgb)
+
 else:
     N = config['explore']
     print(f"Generating {N}x{N} mosaic, ", end="")    
