@@ -33,6 +33,10 @@ In some cases, --luma-flip may be needed if an inverted image is generated.
 
 The input files are assumed to be in non-linear stage (i.e., previously stretched).
 
+Supported file formats:
+* Input files: tif, png, xisf, npz 
+* Output files: tif, png, xisf (not in exploratory mode)
+
 Examples:
 * Basic usage:
 ```
@@ -43,6 +47,8 @@ Examples:
 ```
   dimred.py *.tif output\pca.tif -e 5 -df 8 -cr 30 -cr 120
 ```
+
+Note: this tool requires the xisf package, see https://github.com/sergio-dr/xisf
 
 ```
 positional arguments:
