@@ -97,6 +97,8 @@ parser.add_argument("-sm", "--star-mask", action='store_true',
                     help="Applies mask to prevent star cores from getting out of gamut (optional)")
 parser.add_argument("-me", "--mask-exponent", type=float, default=config_defaults['mask_exponent'],
                     help="Defines a simple mask based on luminance: mask = 1 - L^mask_exponent (optional)") 
+parser.add_argument("-s", "--stretch", action='store_true',
+                    help="Applies a nonlinear stretch to the data (optional)")
 parser.add_argument("-e", "--explore", type=int, default=config_defaults['explore'],
                     help="Exploratory mode: given an integer N, generates a NxN mosaic with the --chroma-angle range specified (optional)")
 
@@ -118,7 +120,7 @@ os.makedirs(output_path, exist_ok=True)
 image_read = { 
     '.tif' : lambda fname: np.atleast_3d( imread(fname).astype(np.float32) / (2**16 - 1) ),
     '.xisf': XISF.read,
-    '.npz' : lambda fname: np.atleast_3d( np.load(fname) )
+    '.npz' : lambda fname: np.atleast_3d( np.load(fname)['data'] )
 }
 
 image_write = {
@@ -143,9 +145,11 @@ path_tpl = os.path.join('.', config['input_files'])
 images = []
 print("Input images:")
 for filename in iglob(path_tpl):
+    # Select proper image reading method based on file extension
     _, ext = os.path.splitext(filename)
     im = image_read[ext](filename)
 
+    # Downscaling if required
     df = config['downscale_factor']
     if df > 1:
         orig_shape = im.shape
@@ -164,6 +168,25 @@ print("... --> ", data.shape, "\n")
 del im, images
 
 # %%
+
+# __/ Preprocessing \__________
+def mtf(m, x, r=2):
+    return ( (1-m)*x ) / ( (1-r*m)*x + (r-1)*m ) 
+
+def nonlinear_stretch(data):
+    data_min, data_max = np.nanmin(data, axis=(0,1)), np.nanmax(data, axis=(0,1))
+    data = (data - data_min) / (data_max - data_min)
+    data = mtf( np.nanmedian(data, axis=(0,1)), data, 4 )
+    return data
+
+
+# Stretch data if requested
+if config['stretch']:
+    data = nonlinear_stretch(data)
+
+# Replace NaNs (with 0.0) if present
+data = np.nan_to_num(data)
+
 
 # __/ Apply the PCA transformation \__________
 h, w, channels = data.shape
