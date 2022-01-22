@@ -6,6 +6,8 @@ Color mapping is always challenging in astrophotography, especially when we have
 
 More info about this approach in the [blog page](https://expandingastro.blogspot.com/2021/12/multiband-mapping-for-astrophotography.html). 
 
+**Please cite this repo** if you use this code or some derivative to produce images to be published: "*Color mapping based on [dimred](https://github.com/sergio-dr/dimred_astro) tool by Sergio Díaz*". 
+
 
 ## Command line help
 
@@ -31,11 +33,13 @@ parameters needed to generate it.
 
 In some cases, --luma-flip may be needed if an inverted image is generated.
 
-The input files are assumed to be in non-linear stage (i.e., previously stretched).
+The input files are assumed to be in non-linear stage (i.e., previously stretched), or you may try the included 
+but simple --strech option. 
 
 Supported file formats:
-* Input files: tif, png, xisf, npz 
-* Output files: tif, png, xisf (not in exploratory mode)
+* Input files: tif (16 bits), png (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
+* Output files: tif (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
+* Output files for exploratory mode: tif (8 bits), png (8 bits)
 
 Examples:
 * Basic usage:

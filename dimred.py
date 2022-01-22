@@ -2,6 +2,7 @@
 
 # %%
 import argparse
+from ast import Import
 import os
 from glob import iglob 
 
@@ -9,11 +10,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from skimage.io import imread, imsave
-from skimage.transform import rescale 
+#from skimage.transform import rescale 
 from skimage.color import lab2rgb # TODO:, ydbdr2rgb, ...
 from skimage.util import img_as_uint
 
-from xisf import XISF
+try:
+    from xisf import XISF
+except ImportError:
+    XISF = None
 
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
@@ -37,11 +41,13 @@ parameters needed to generate it.
 
 In some cases, --luma-flip may be needed if an inverted image is generated.
 
-The input files are assumed to be in non-linear stage (i.e., previously stretched).
+The input files are assumed to be in non-linear stage (i.e., previously stretched), or you may try the included 
+but simple --strech option. 
 
 Supported file formats:
-* Input files: tif, png, xisf, npz 
-* Output files: tif, png, xisf (not in exploratory mode)
+* Input files: tif (16 bits), png (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
+* Output files: tif (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
+* Output files for exploratory mode: tif (8 bits), png (8 bits)
 
 Examples:
 * Basic usage:
@@ -54,7 +60,7 @@ Examples:
   dimred.py *.tif output\pca.tif -e 5 -df 8 -cr 30 -cr 120
 ```
 
-Note: this tool requires the xisf package, see https://github.com/sergio-dr/xisf
+Note: this tool requires the xisf package to read/write XISF files, see https://github.com/sergio-dr/xisf
 """
 
 DEBUG_CMDLINE = None
@@ -119,25 +125,40 @@ os.makedirs(output_path, exist_ok=True)
 # __/ Select image read and write method depending on file extension \__________
 image_read = { 
     '.tif' : lambda fname: np.atleast_3d( imread(fname).astype(np.float32) / (2**16 - 1) ),
-    '.xisf': XISF.read,
     '.npz' : lambda fname: np.atleast_3d( np.load(fname)['data'] )
 }
 
 image_write = {
     '.tif' : lambda fname, d: imsave(fname, img_as_uint(d)),
-    '.png' : lambda fname, d: imsave(fname, img_as_uint(d)),    
-    '.xisf': lambda fname, d: XISF.write(fname, d)
+    #'.png' : lambda fname, d: imsave(fname, img_as_uint(d)), # 8-bit! see https://github.com/imageio/imageio/issues/204#issuecomment-271566703
+    '.npz' : lambda fname, d: np.savez_compressed(fname, data=d)
 }
 
-# Check if output file format is supported
-_, out_ext = os.path.splitext(config['output_file'])
-if not out_ext in image_write.keys(): 
-    print("Output file format not supported.\n")
+allowed_explore_formats = ['.tif', '.png']
+
+# Add methods for XISF if module is installed
+if XISF is None:
+    print("You may add XISF format support by installing the package 'xisf': https://github.com/sergio-dr/xisf")
+else:    
+    image_read['.xisf'] = XISF.read
+    image_write['.xisf'] = lambda fname, d: XISF.write(fname, d)
+
+
+# Pre-check if input/output file formats are supported
+_, in_ext = os.path.splitext(config['input_files'])
+if not in_ext in image_read.keys(): 
+    print(f"Input file format {in_ext} not supported.\n")
     exit(1)
 
-if config['explore'] > 0 and out_ext == '.xisf':
-    print("XISF format is not supported in explore mode.\n")
+_, out_ext = os.path.splitext(config['output_file'])
+if not out_ext in image_write.keys(): 
+    print(f"Output file format {out_ext} not supported.\n")
     exit(1)
+
+if config['explore'] > 0 and out_ext not in allowed_explore_formats:
+    print(f"Only {allowed_explore_formats} formats are supported in explore mode.\n")
+    exit(1)
+
 
 
 # __/ Open input files and generate the stack \__________
@@ -146,8 +167,7 @@ images = []
 print("Input images:")
 for filename in iglob(path_tpl):
     # Select proper image reading method based on file extension
-    _, ext = os.path.splitext(filename)
-    im = image_read[ext](filename)
+    im = image_read[in_ext](filename)
 
     # Downscaling if required
     df = config['downscale_factor']
