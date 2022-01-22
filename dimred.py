@@ -151,14 +151,12 @@ if not in_ext in image_read.keys():
     exit(1)
 
 _, out_ext = os.path.splitext(config['output_file'])
-if not out_ext in image_write.keys(): 
-    print(f"Output file format {out_ext} not supported.\n")
-    exit(1)
-
 if config['explore'] > 0 and out_ext not in allowed_explore_formats:
     print(f"Only {allowed_explore_formats} formats are supported in explore mode.\n")
     exit(1)
-
+elif config['explore'] == 0 and not out_ext in image_write.keys(): 
+    print(f"Output file format {out_ext} not supported.\n")
+    exit(1)
 
 
 # __/ Open input files and generate the stack \__________
@@ -246,7 +244,7 @@ print()
 # __/ Luma/Chroma transformations \__________
 
 def luma_flipping(lum_chr):
-    return lum_chr * [-1, 1, 1]
+    return lum_chr * [-1, 1, 1] + [config['luma_scale_factor'], 0, 0]
 
 def chroma_flipping(lum_chr):
     # just need to flip first chroma component; 
