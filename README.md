@@ -12,29 +12,29 @@ More info about this approach in the [blog page](https://expandingastro.blogspot
 ## Command line help
 
 ```
-usage: dimred.py [-h] [-df DOWNSCALE_FACTOR] [-qm QUANTILE_MIN]
-                 [-qM QUANTILE_MAX] [-cr CHROMA_ROTATION]
-                 [-ce CHROMA_ROTATION_END] [-cf] [-lf] [-e EXPLORE]
+usage: dimred.py [-h] [-df DOWNSCALE_FACTOR] [-qm QUANTILE_MIN] [-qM QUANTILE_MAX] [-cr CHROMA_ROTATION]
+                 [-ce CHROMA_ROTATION_END] [-cf] [-lf] [-cs CHROMA_SCALE_FACTOR] [-sm] [-me MASK_EXPONENT] [-s]
+                 [-e EXPLORE]
                  input_files output_file
 ```
 
-Maps multiple bands or channels (given as a bunch of monochromatic image TIFF files) into a RGB color image. 
-Input data is transformed by a PCA (Principal Components Analysis) algorithm to reduce the dimensionality, 
-effectively compressing the information to three components: the first one (which has the most variance) is 
-interpreted as luminance data, while the second and third components are interpreted as chrominance data. 
-This implementation places this luminance/chrominance data CIELAB color space and then performs its 
-conversion to RGB. 
+Maps multiple bands or channels (given as a bunch of monochromatic image TIFF files) into a RGB color image.
+Input data is transformed by a PCA (Principal Components Analysis) algorithm to reduce the dimensionality,
+effectively compressing the information to three components: the first one (which has the most variance) is
+interpreted as luminance data, while the second and third components are interpreted as chrominance data.
+This implementation places this luminance/chrominance data CIELAB color space and then performs its
+conversion to RGB.
 
-The chrominance data (a, b components) can be rotated and flipped to generate different color mappings. 
+The chrominance data (a, b components) can be rotated and flipped to generate different color mappings.
 The --explore N option is useful to explore different color palettes: it generates a NxN mosaic with different
-values for chroma rotation [CHROMA_ROTATION, CHROMA_ROTATION_END) and flipping. Be sure to use it along with 
-a high DOWNSCALE_FACTOR to speed computations. Every image in the mosaic shows the chroma command line 
-parameters needed to generate it. 
+values for chroma rotation [CHROMA_ROTATION, CHROMA_ROTATION_END) and flipping. Be sure to use it along with
+a high DOWNSCALE_FACTOR to speed computations. Every image in the mosaic shows the chroma command line
+parameters needed to generate it.
 
 In some cases, --luma-flip may be needed if an inverted image is generated.
 
-The input files are assumed to be in non-linear stage (i.e., previously stretched), or you may try the included 
-but simple --strech option. 
+The input files are assumed to be in non-linear stage (i.e., previously stretched), or you may try the included
+but simple --strech option.
 
 Supported file formats:
 * Input files: tif (16 bits), png (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
@@ -44,15 +44,15 @@ Supported file formats:
 Examples:
 * Basic usage:
 ```
-  dimred.py *.tif output\pca.tif -cr 30 
-```  
+  dimred.py *.tif output\pca.tif -cr 30
+```
 
-* Exploratory mode, with 5x5 chroma rotation values in the range [30º, 120º], downscaling by 8: 
+* Exploratory mode, with 5x5 chroma rotation values in the range [30º, 120º], downscaling by 8:
 ```
   dimred.py *.tif output\pca.tif -e 5 -df 8 -cr 30 -cr 120
 ```
 
-Note: this tool requires the xisf package, see https://github.com/sergio-dr/xisf
+Note: this tool requires the xisf package to read/write XISF files, see https://github.com/sergio-dr/xisf
 
 ```
 positional arguments:
@@ -71,8 +71,14 @@ optional arguments:
                         Angle (in degrees) for specifying chroma components rotation; will be interpreted as initial angle in --explore mode (optional)
   -ce CHROMA_ROTATION_END, --chroma-rotation-end CHROMA_ROTATION_END
                         End angle (in degrees) for in --explore mode; by default, 360º+CHROMA_ROTATION (optional)
-  -cf, --chroma-flip
-  -lf, --luma-flip
+  -cf, --chroma-flip    Flips chrominance plane, specifically flipping the sign of the first chroma component (optional)
+  -lf, --luma-flip      Flips sign of the luminance channel
+  -cs CHROMA_SCALE_FACTOR, --chroma-scale-factor CHROMA_SCALE_FACTOR
+                        Multiplicative factor to scale chroma components (optional)
+  -sm, --star-mask      Applies mask to prevent star cores from getting out of gamut (optional)
+  -me MASK_EXPONENT, --mask-exponent MASK_EXPONENT
+                        Defines a simple mask based on luminance: mask = 1 - L^mask_exponent (optional)
+  -s, --stretch         Applies a nonlinear stretch to the data (optional)
   -e EXPLORE, --explore EXPLORE
                         Exploratory mode: given an integer N, generates a NxN mosaic with the --chroma-angle range specified (optional)
 ```
