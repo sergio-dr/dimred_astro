@@ -18,12 +18,12 @@ usage: dimred.py [-h] [-df DOWNSCALE_FACTOR] [-qm QUANTILE_MIN] [-qM QUANTILE_MA
                  input_files output_file
 ```
 
-Maps multiple bands or channels (given as a bunch of monochromatic image TIFF files) into a RGB color image.
-Input data is transformed by a PCA (Principal Components Analysis) algorithm to reduce the dimensionality,
-effectively compressing the information to three components: the first one (which has the most variance) is
-interpreted as luminance data, while the second and third components are interpreted as chrominance data.
-This implementation places this luminance/chrominance data CIELAB color space and then performs its
-conversion to RGB.
+Maps multiple bands or channels (given as a bunch of image files, see below for supported formats) into a 
+RGB color image. Input data is transformed by a PCA (Principal Components Analysis) algorithm to reduce its 
+dimensionality, effectively compressing the information to three components: the first one (which has the most
+variance) is interpreted as luminance data, while the second and third components are interpreted as chrominance
+data. This implementation places this luminance/chrominance data CIELAB color space and then performs its 
+conversion to RGB. 
 
 The chrominance data (a, b components) can be rotated and flipped to generate different color mappings.
 The --explore N option is useful to explore different color palettes: it generates a NxN mosaic with different
