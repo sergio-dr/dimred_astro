@@ -6,7 +6,7 @@ Color mapping is always challenging in astrophotography, especially when we have
 
 More info about this approach in the [blog page](https://expandingastro.blogspot.com/2021/12/multiband-mapping-for-astrophotography.html). 
 
-**Please cite this repo** if you use this code or some derivative to produce images to be published: "*Color mapping based on [dimred](https://github.com/sergio-dr/dimred_astro) tool by Sergio Díaz*". 
+**Please cite this repo** if you use this code or some derivative to produce images to be published, or if you integrate it in another software tool: "*Color mapping based on [dimred](https://github.com/sergio-dr/dimred_astro) tool by Sergio Díaz*". 
 
 
 ## Command line help
