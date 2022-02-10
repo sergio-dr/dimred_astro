@@ -66,6 +66,8 @@ Note: this tool requires the xisf package to read/write XISF files, see https://
 DEBUG_CMDLINE = None
 #DEBUG_CMDLINE = "*.tif pca.tif -df 8 -e 5".split(" ") 
 
+creator_app = "github.com/sergio-dr/dimred_astro"
+
 config_defaults = {
     'n_components': 3,
     'luma_scale_factor': 100,
@@ -83,6 +85,8 @@ parser.add_argument("input_files",
                     help="Input files specified using wildcards, e.g. '*.tif'")
 parser.add_argument("output_file", 
                     help="Output filename") 
+parser.add_argument("-c", "--compress", action='store_true',
+                    help="Enables lz4hc+shuffling compression for output files (XISF only)")
 parser.add_argument("-df", "--downscale-factor", type=int, default=config_defaults['downscale_factor'],
                     help="Integer downscaling factor to speed up computation, as a preview (optional)")
 parser.add_argument("-qm", "--quantile-min", type=float, default=config_defaults['quantile_min'],
@@ -141,7 +145,8 @@ if XISF is None:
     print("You may add XISF format support by installing the package 'xisf': https://github.com/sergio-dr/xisf")
 else:    
     image_read['.xisf'] = XISF.read
-    image_write['.xisf'] = lambda fname, d: XISF.write(fname, d)
+    codec, shuffle = ('lz4hc', True) if config['compress'] else (None, False)    
+    image_write['.xisf'] = lambda fname, d: XISF.write(fname, d, creator_app=creator_app, codec=codec, shuffle=shuffle)
 
 
 # Pre-check if input/output file formats are supported
