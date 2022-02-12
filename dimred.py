@@ -68,6 +68,8 @@ DEBUG_CMDLINE = None
 
 creator_app = "github.com/sergio-dr/dimred_astro"
 
+epilog = f"Project page: {creator_app}, by Sergio Díaz, sergiodiaz.eu"
+
 config_defaults = {
     'n_components': 3,
     'luma_scale_factor': 100,
@@ -80,7 +82,7 @@ config_defaults = {
     'explore': 0,
 }
 
-parser = argparse.ArgumentParser(description=DESC, formatter_class=argparse.RawTextHelpFormatter)
+parser = argparse.ArgumentParser(description=DESC, epilog=epilog, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("input_files", 
                     help="Input files specified using wildcards, e.g. '*.tif'")
 parser.add_argument("output_file", 
