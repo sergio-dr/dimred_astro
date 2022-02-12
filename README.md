@@ -61,6 +61,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -c, --compress        Enables lz4hc+shuffling compression for output files (XISF only) (default: False)  
   -df DOWNSCALE_FACTOR, --downscale-factor DOWNSCALE_FACTOR
                         Integer downscaling factor to speed up computation, as a preview (optional)
   -qm QUANTILE_MIN, --quantile-min QUANTILE_MIN
