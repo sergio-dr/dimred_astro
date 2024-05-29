@@ -1,2 +1,2 @@
-out
-other
+__pycache__
+.lprof
