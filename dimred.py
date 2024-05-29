@@ -37,9 +37,8 @@ lightness/chroma data CIELAB color space and then performs its conversion to RGB
 
 The chroma data (a, b components) can be rotated and flipped to generate different color mappings.
 The --explore N option is useful to explore different color palettes: it generates a NxN mosaic 
-with different values for chroma rotation [CHROMA_ROTATION, CHROMA_ROTATION_END) and flipping. Be 
-sure to use it along with a high DOWNSCALE_FACTOR to speed computations. Every image in the mosaic 
-shows the chroma command line parameters needed to generate it. 
+with different values for chroma rotation [CHROMA_ROTATION, CHROMA_ROTATION_END) and flipping. 
+Every image in the mosaic shows the chroma command line parameters needed to generate it. 
 
 In some cases, --luma-flip may be needed if an inverted image is generated.
 
@@ -62,7 +61,7 @@ Examples:
 
 * Exploratory mode, with 5x5 chroma rotation values in the range [30º, 120º], downscaling by 8: 
 ```
-  dimred.py *.tif output\pca.tif -e 5 -df 8 -cr 30 -cr 120
+  dimred.py *.tif output\pca.tif -e 5 -cr 30 -cr 120
 ```
 
 Note: this tool requires the xisf package to read/write XISF files, see
@@ -70,7 +69,7 @@ https://github.com/sergio-dr/xisf
 """
 
 DEBUG_CMDLINE = None
-# DEBUG_CMDLINE = "*.tif pca.tif -df 8 -e 5".split(" ")
+# DEBUG_CMDLINE = "*.tif pca.tif -e 5".split(" ")
 
 creator_app = "github.com/sergio-dr/dimred_astro"
 
