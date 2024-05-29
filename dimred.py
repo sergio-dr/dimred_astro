@@ -11,7 +11,7 @@ import numpy as np
 
 from skimage.io import imread, imsave
 
-# from skimage.transform import rescale
+from skimage.measure import block_reduce
 from skimage.color import lab2rgb  # TODO:, ydbdr2rgb, ...
 from oklab import Oklab
 from skimage.util import img_as_uint
@@ -291,14 +291,19 @@ def nonlinear_stretch(data):
     return data
 
 
-# Compute downsample factor to speed up PCA fitting
+# Speed up PCA fitting by downsampling
+# Compute downsampling factor:
 df = int(w / DOWNSAMPLED_IM_WIDTH)
-# In explore mode, the PCA will be applied on the downsampled data instead
+
+# Train dataset as a downsample of the original data
+# X_train = X[::df, ::df, :]  # sampling by strides
+# Downscaling by local median:
+X_train = block_reduce(X, (df, df, 1), np.median, np.median(X))
+
+# In explore mode, the PCA will also be applied on the downsampled data
 if config['explore']:
     X = X[::df, ::df, :]
-    df = 1
-    h, w, channels = X.shape
-
+    h, w, channels = X_train.shape
 
 # Stretch data if requested
 if config['stretch']:
@@ -309,9 +314,6 @@ X = np.nan_to_num(X)
 
 
 # __/ Apply the PCA transformation \__________
-
-# Use a sample to speed up PCA fitting
-X_train = X[::df, ::df, :]
 
 # Flatten the spatial axis
 X = X.reshape((-1, channels))
