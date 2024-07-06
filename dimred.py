@@ -2,7 +2,6 @@
 
 # %%
 import argparse
-from ast import Import
 import os
 from glob import iglob
 
@@ -47,7 +46,8 @@ the included but simple --strech option.
 
 Supported file formats:
 * Input files: 
-  tif (16 bits), png (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
+  tif (16 bits), png (16 bits), xisf (float 32/64 bits), npy (float 32 bits), 
+  npz (float 32 bits, 'data' key)
 * Output files: 
   tif (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
 * Output files for exploratory mode: 
@@ -82,7 +82,6 @@ config_defaults = {
     'n_components': 3,
     'luma_scale_factor': BASE_SCALE_FACTOR,
     'chroma_scale_factor': 0.8 * BASE_SCALE_FACTOR,
-    'downscale_factor': 8,
     'quantile_min': 0.01,
     'quantile_max': 99.99,
     'chroma_rotation': 0.0,
@@ -179,6 +178,18 @@ parser.add_argument(
     default=config_defaults['explore'],
     help="Exploratory mode: given an integer N, generates a NxN mosaic with the chroma angle range specified by -cr and -ce (optional)",
 )
+parser.add_argument(
+    "-ds",
+    "--downsample-stride",
+    action='store_true',
+    help="Downsample by striding instead of local median",
+)
+parser.add_argument(
+    "-a",
+    "--absolute",
+    action='store_true',
+    help="Use the absolute values of first component (experimental)",
+)
 
 
 args = parser.parse_args(DEBUG_CMDLINE)
@@ -198,10 +209,11 @@ os.makedirs(output_path, exist_ok=True)
 image_read = {
     '.tif': lambda fname: np.atleast_3d(imread(fname).astype(np.float32) / (2**16 - 1)),
     '.npz': lambda fname: np.atleast_3d(np.load(fname)['data']),
+    '.npy': lambda fname: np.atleast_3d(np.load(fname)),
 }
 
 image_write = {
-    '.tif': lambda fname, d: imsave(fname, img_as_uint(d)),
+    '.tif': lambda fname, d: imsave(fname, img_as_uint(d.clip(-1, 1))),
     #'.png' : lambda fname, d: imsave(fname, img_as_uint(d)),
     # 8-bit! see https://github.com/imageio/imageio/issues/204#issuecomment-271566703
     '.npz': lambda fname, d: np.savez_compressed(fname, data=d),
@@ -296,9 +308,12 @@ def nonlinear_stretch(data):
 df = int(w / DOWNSAMPLED_IM_WIDTH)
 
 # Train dataset as a downsample of the original data
-# X_train = X[::df, ::df, :]  # sampling by strides
-# Downscaling by local median:
-X_train = block_reduce(X, (df, df, 1), np.median, np.median(X))
+if config['downsample_stride']:
+    # Downsampling by striding
+    X_train = X[::df, ::df, :]
+else:
+    # Downsampling by local median:
+    X_train = block_reduce(X, (df, df, 1), np.median, np.median(X))
 
 # In explore mode, the PCA will also be applied on the downsampled data
 if config['explore']:
@@ -335,10 +350,14 @@ luma_scaler = MinMaxScaler()
 quantile_range = (config['quantile_min'], config['quantile_max'])
 chroma_scaler = RobustScaler(quantile_range=quantile_range)
 
-luma = config['luma_scale_factor'] * luma_scaler.fit_transform(embedding[:, [0]])
-# TODO si en la primera componente hay coeficientes negativos, sopesar si reemplazarla por:
-# luma = np.average(X, axis=-1, weights=np.abs(pca.components_[0,:]), keepdims=True)
-# luma = config['luma_scale_factor'] * luma_scaler.fit_transform(luma)
+if config['absolute']:
+    # In some cases, to conserve a background level that is near zero:
+    # replace luma by reprojecting the data using the absolute value of the first component
+    luma = np.average(X, axis=-1, weights=np.abs(pca.components_[0,:]), keepdims=True)
+else:
+    
+    luma = embedding[:, [0]]
+luma = config['luma_scale_factor'] * luma_scaler.fit_transform(luma)
 
 chroma = config['chroma_scale_factor'] * chroma_scaler.fit_transform(embedding[:, [1, 2]])
 
@@ -432,7 +451,7 @@ else:
         print(f"Rotation: {degs:.1f}º")
         lum_chr_degs = chroma_rotation(lum_chr, degs).reshape((h, w, 3))
         rgb_hue = lab2rgb_fn(lum_chr_degs)
-        axs[i].imshow(rgb_hue)
+        axs[i].imshow(rgb_hue.clip(0, 1))
         axs[i].set_axis_off()
         axs[i].text(0, 16, f"-cr={degs:.1f}", c='white', fontsize=16)
     print("Chroma flip")
@@ -441,7 +460,7 @@ else:
         print(f"Rotation: {degs:.1f}º")
         lum_chr_degs = chroma_rotation(lum_chr, degs).reshape((h, w, 3))
         rgb_hue = lab2rgb_fn(lum_chr_degs)
-        axs[i + M].imshow(rgb_hue)
+        axs[i + M].imshow(rgb_hue.clip(0, 1))
         axs[i + M].set_axis_off()
         axs[i + M].text(0, 16, f"-cr={degs:.1f} -cf", c='white', fontsize=16)
     fig.tight_layout()

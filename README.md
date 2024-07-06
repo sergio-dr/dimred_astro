@@ -38,7 +38,7 @@ The input files are assumed to be in non-linear stage (i.e., previously stretche
 the included but simple --strech option.
 
 Supported file formats:
-* Input files: tif (16 bits), png (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
+* Input files: tif (16 bits), png (16 bits), xisf (float 32/64 bits), npy (float 32 bits), npz (float 32 bits, 'data' key)
 * Output files: tif (16 bits), xisf (float 32/64 bits), npz (float 32 bits, 'data' key)
 * Output files for exploratory mode: tif (8 bits), png (8 bits)
 
@@ -82,4 +82,7 @@ options:
   -s, --stretch         Applies a nonlinear stretch to the data (optional) (default: False)
   -e EXPLORE, --explore EXPLORE
                         Exploratory mode: given an integer N, generates a NxN mosaic with the chroma angle range specified by -cr and -ce (optional) (default: 0)
+  -ds, --downsample-stride
+                        Downsample by striding instead of local median (default: False)
+  -a, --absolute        Use the absolute values of first component (experimental) (default: False)
 ```
